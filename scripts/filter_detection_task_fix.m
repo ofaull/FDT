@@ -95,17 +95,34 @@ if strcmp(option,'fix') == 1
                 results.thresholdTrials.response(changeTrialNum) = changeResponse;
                 results.thresholdTrials.confidence(changeTrialNum) = changeConfidence;
                 results.thresholdTrials.adjustmentDateAndTime = datestr(now, 'yyyy_mm_dd_HHMMSS'); % Mark the date the results were manually adjusted
-                a = 1;
+                % Re-score replaced trials
+                if (results.setup.taskType == 1 && results.thresholdTrials.filters(changeTrialNum) == results.thresholdTrials.response(changeTrialNum)) || (results.setup.taskType == 2 && results.thresholdTrials.interval(changeTrialNum) == results.thresholdTrials.response(changeTrialNum))
+                    results.thresholdTrials.score(changeTrialNum) = 1;
+                elseif (results.setup.taskType == 1 && results.thresholdTrials.filters(changeTrialNum) ~= results.thresholdTrials.response(changeTrialNum)) || (results.setup.taskType == 2 && results.thresholdTrials.interval(changeTrialNum) ~= results.thresholdTrials.response(changeTrialNum))
+                    results.thresholdTrials.score(changeTrialNum) = 0;
+                end
+                results.thresholdTrials.accuracyTotal = round(mean(results.thresholdTrials.score) * 100); % Re-calculate total accuracy
+                fprintf('______________________________________\n\nTrial %d adjusted\n______________________________________\n\n', changeTrialNum);
+            else
+                fprintf('______________________________________\n\nTrial %d NOT adjusted\n______________________________________\n\n', changeTrialNum);
             end
-        % Re-score replaced trials
-        if (results.setup.taskType == 1 && results.thresholdTrials.filters(changeTrialNum) == results.thresholdTrials.response(changeTrialNum)) || (results.setup.taskType == 2 && results.thresholdTrials.interval(changeTrialNum) == results.thresholdTrials.response(changeTrialNum))
-            results.thresholdTrials.score(changeTrialNum) = 1;
-        elseif (results.setup.taskType == 1 && results.thresholdTrials.filters(changeTrialNum) ~= results.thresholdTrials.response(changeTrialNum)) || (results.setup.taskType == 2 && results.thresholdTrials.interval(changeTrialNum) ~= results.thresholdTrials.response(changeTrialNum))
-            results.thresholdTrials.score(changeTrialNum) = 0;
+        % Ask for further trials
+        try
+            more = input('Change another trial (Yes = 1, No = 0) = '); % Get confirmation
+        catch
         end
-        results.thresholdTrials.accuracyTotal = round(mean(results.thresholdTrials.score) * 100); % Re-calculate total accuracy
-        fprintf('______________________________________\n\nTrial %d adjusted\n______________________________________\n\n', changeTrialNum);
-        save(resultsFile, 'results'); % Save results
+        if more == 0
+            outputDir = exist(fullfile('results', 'original_files')); % Check if folder for old files already exists
+            if outputDir == 0
+                mkdir results original_files % Make the folder if it does not exist
+            elseif outputDir == 7
+            end
+            resultsFile_orig = fullfile('results', 'original_files', ['filter_task_results_', PPID, '_orig.mat']);
+            movefile(resultsFile, resultsFile_orig); % Save a copy of the original results
+            save(resultsFile, 'results'); % Save results
+            fprintf('______________________________________\n\nFINISHED!\n______________________________________\n\n');
+            a = 1;
+        end
     end
 
 
@@ -165,7 +182,7 @@ elseif strcmp(option,'combine') == 1
         delete (fullfile('results', ['filter_task_results_', file1, '.mat'])); % Remove old file from main results folder
         delete (fullfile('results', ['filter_task_results_', file2, '.mat'])); % Remove old file from main results folder
     else
-        fprintf('\nERROR: FILTER NUMBERS DO NOT MATCH\n');
+        fprintf('\nERROR: FILTER NUMBERS DO NOT MATCH\n______________________________________\n');
     end
 
 
@@ -177,9 +194,10 @@ else
     fprintf('\nOption does not exist, please try again.\n');
 end
 catch
+    fprintf('\n______________________________________\n')
 end
 
-fprintf('\n______________________________________\n')
+
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
