@@ -174,7 +174,21 @@ prompt_confirm_trial    = '-->CONFIRM TRIAL: (Yes = 1  No = 0)   ';
 prompt_filters          = 'ENTER FILTERS =                       ';
 
 % Display start on screen
-fprintf('_______________________________________\n_______________________________________\n\n             FILTER TASK\n_______________________________________\n');
+fprintf('_______________________________________\n_______________________________________\n\n        FILTER DETECTION TASK\n_______________________________________\n_______________________________________\n');
+
+% Print reminder to turn on pink noise
+pinkNoise = 0;
+while pinkNoise ~= 1
+    try
+        pinkNoise = input('PINK NOISE ON? (Yes = 1)?             '); % Prompt reminder about pink noise
+        if pinkNoise ~= 1
+            disp('CAUTION! Pink noise required')
+        end
+    catch
+        disp('CAUTION! Pink noise required')
+    end
+end
+fprintf('\nStarting task...\n_______________________________________\n');
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -369,7 +383,7 @@ if calibration == 1
             end
         end
     end
-    fprintf('_______________________________________\n\n          CALIBRATION COMPLETE\n');
+    fprintf('_______________________________________\n\n         CALIBRATION COMPLETE\n');
 elseif calibration == 0
     currentIntensityNum = start_filters;
 end
