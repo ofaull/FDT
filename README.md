@@ -1,16 +1,11 @@
------
-
 # FILTER DETECTION TASK
 
------
 
 VERSION: 0.2.1
 
 Author: Olivia Harrison
 
 Created: 14/08/2018
-
------
 
 This software is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. This software is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
@@ -20,41 +15,33 @@ See the GNU General Public License for more details: <http://www.gnu.org/license
 
 Updated to 0.2.1: 22/06/2020
 
-Added error to avoid over-writing files with the same PPID specified
+- Added error to avoid over-writing files with the same PPID specified
 
-Information regarding download or location of freely-available high quality pink noise files added
-
------
+- Information regarding download or location of freely-available high quality pink noise files added
 
 Updated to 0.2.0: 02/09/2019
 
-Regression analysis option added to the toolbox
+- Regression analysis option added to the toolbox
 
-More highly regularised roving staircase with a tighter accuracy band (70-75% range) and less tolerant error risk (0.3 from 0.2)
+- More highly regularised roving staircase with a tighter accuracy band (70-75% range) and less tolerant error risk (0.3 from 0.2)
 
-Criterion representation fixed (c < 0 indicates bias towards yes)
-
------
+- Criterion representation fixed (c < 0 indicates bias towards yes)
 
 Updated to 0.1.3: 05/07/2019
 
-Added option to run with a fixed or roving staircase
-
------
+- Added option to run with a fixed or roving staircase
 
 Updated to 0.1.2: 17/05/2019
 
-Bug fixed in `filter_detection_task_fix` script (typo) that caught script
-
------
+- Bug fixed in `filter_detection_task_fix` script (typo) that caught script
 
 Updated to 0.1.1: 25/11/2018
 
-2IFC Task option included as an alternative
+- 2IFC Task option included as an alternative
 
-Option to specify upper and lower confidence bounds
+- Option to specify upper and lower confidence bounds
 
-Automatic avoidance of zero filters during main task
+- Automatic avoidance of zero filters during main task
 
 -----
 
