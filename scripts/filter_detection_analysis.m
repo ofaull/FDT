@@ -25,11 +25,11 @@
 %      http://mcmc-jags.sourceforge.net/
 %      The code has been tested on JAGS 3.4.0; there are compatibility
 %      issues between matjags and JAGS 4.X.
-%   2) The code requires the HMeta-d toolbox, please download and add to 
-%      your Matlab path: https://github.com/metacoglab/HMeta-d.
+%   2) The code requires the HMeta-d toolbox (provided as a submodule
+%      from https://github.com/metacoglab/HMeta-d) to be on your path.
 %   3) This script is looking for specific results files that were output
 %      from the filter_detection_task, which are located in the
-%      breathing_filter_task/results/ folder. The results are expected to 
+%      filter_detection_task/results/ folder. The results are expected to 
 %      contain a results.filterThreshold.xx structure, where values for xx:
 %         - results.filterThreshold.filterNum: a value to determine the
 %           number of filters where trials were performed
