@@ -18,7 +18,7 @@
 % This analysis script uses either Brian Maniscalco's single subect
 % analysis or Steve Fleming's Hierarchical Bayesian toolbox (for group
 % analysis) to calculate perceptual decision and metacognitive metrics, 
-% specific to data produced by running the filter_detection_analysis task.
+% specific to data produced by running the filter_detection_task.
 
 % IMPORTANT ANALYSIS NOTES:
 %   1) The code requires JAGS software to run, which can be found here:
@@ -58,8 +58,7 @@
 %      when estimating meta-d' using 60 trials. It is STRONGLY encouraged
 %      to utilise the hierarchical models, or collect many more trials 
 %      (200+ trials) for each subject to have a more reliable measure of
-%      meta-d'. Please see the simulation figures provided in the
-%      filter_detection_task/analysis/simulations/ folder.
+%      meta-d'.
 %    - A group mean analysis: A hierarchical Bayesian analysis, whereby all
 %      subjects are fit together and information from the group mean is
 %      used as prior information for each subject. This hierarchical model
