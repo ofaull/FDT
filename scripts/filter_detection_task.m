@@ -25,7 +25,7 @@
 %      well as the metacognitive metric of meta-d'.
 
 % For full information on the set up of this task please see the
-% filter_detection_readme.txt file in the main task folder.
+% README.md file in the main task folder.
 
 % TO RUN THIS TASK:
 %   1) Copy the entire set of files to a location on your computer and add
@@ -48,9 +48,8 @@
 %   4) Follow the matlab prompts to specify whether practice and
 %      calibration trials should be run, and the number of trials you aim
 %      to complete at threshold (minimum recommendation = 60 trials).
-%   5) Turn on a low level of pink noise (supplied) to reduce the influence
-%      of any noise cues (see filter_detection_task/background_noise/
-%      folder).
+%   5) Turn on a low level of pink noise (required) to reduce the influence
+%      of any noise cues (see README.md).
 %   6) Follow the prompt instructions to complete the task. Only for the 
 %      very first practice trial (a dummy) is it explicitly explained to
 %      the participant whether or not they will receive the load, and then  
