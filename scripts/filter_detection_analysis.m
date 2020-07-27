@@ -3,7 +3,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % -------------------------------------------------------------------------
-% Author: Olivia Faull
+% Author: Olivia Harrison
 % Created: 14/08/2018
 %
 % This software is free software: you can redistribute it and/or modify it 
@@ -65,10 +65,15 @@
 %      used as prior information for each subject. This hierarchical model
 %      helps with much more accurate estimations of meta-d' with small
 %      trial numbers, such as using 60 trials per subject.
+%    - A group regression analysis: A hierarchical Bayesian regression
+%      analysis that is an extension on the group mean analysis, whereby 
+%      subjects are fit together in one model, and the relationship between
+%      single subject log(meta-d'/d') values and the covariate(s) is
+%      estimated within the hierarchical model structure.
 %    - A group difference analysis: A hierarchical Bayesian analysis,
 %      whereby each group of subjects is fitted separately, and the groups
 %      are then compared. Frequentist statistics (such as parametric
-%      unpaired T-tests, or non-parametric Wilcoxen signed-rank tests) can
+%      unpaired T-tests, or non-parametric Wilcoxon signed-rank tests) can
 %      be used for all values that are not fitted using hierarchical
 %      information, such as d', c, filter number, accuracy and average
 %      confidence. As the group values for log(meta-d'/d') are calculated
@@ -81,14 +86,14 @@
 %      log(meta-d'/d') (or any related meta-d' metric) are required for
 %      further analyses that span both groups (such as entry into general 
 %      linear models), it is recommended to fit all subjects together in
-%      one model but ONLY if groups have equal subject numbers. If groups
-%      are unequal, fitting the entire subject pool together will result in
-%      biased group and single subject estimates. However, extreme care 
-%      must be taken with further analyses across groups that have been
-%      fitted separately, such that they do not violate independence
-%      assumptions. Further analyses that encompass single subject values
-%      only within one group (such as a within-group correlation of
-%      log(meta-d'/d') with a variable of interest) should be fine.
+%      one regression model with a regressor denoting group identity.
+%    - A session difference analysis (paired group difference): A
+%      hierarchical Bayesian analysis, whereby two sessions / measures from
+%      the same participants are fitted in a single model using a
+%      multivariate normal distribution. This distribution allows for the
+%      non-independence between sessions for each participant. NOTE:
+%      Participants must be listed in the same order for analysis, and must
+%      have data for both sessions / each measure.
 
 % NOTES ON NON-BAYESIAN SINGLE SUBJECT ANALYSIS FROM AUTHORS' WEBSITE 
 % (columbia.edu/~bsm2105/type2sdt/archive/index.html):
@@ -149,20 +154,21 @@
 %           between the groups (i.e. task difficulty was comparable).
 
 % ADDITIONAL GROUP DIFFERENCE OUTPUT VALUES:
-% If the analysis is a two-group difference, the following will also be
-% calculated for the non-hierarchical measures (xx = filterNum, d1, c1 and
+% If the analysis is a two-group or two-session (paired) difference, the 
+% following will also be calculated for the non-hierarchical measures 
+% (test = groupDiff or sessionDiff; xx = filterNum, d1, c1 and 
 % avgConfidence):
-%   1) analysis.groupDiff.xx.h = Results of null hypothesis test, where h =
+%   1) analysis.test.xx.h = Results of null hypothesis test, where h =
 %      1 for rejection of the null, and h = 0 for no rejection.
-%   2) analysis.groupDiff.xx.p = The p-value for the statistical test.
-%   3) analysis.groupDiff.xx.stats = Further statistics (such as tstats,
+%   2) analysis.test.xx.p = The p-value for the statistical test.
+%   3) analysis.test.xx.stats = Further statistics (such as tstats,
 %      number of samples, degrees of freedom) associated with the test.
-%   4) analysis.groupDiff.xx.ci = Confidence interval of the difference,
+%   4) analysis.test.xx.ci = Confidence interval of the difference,
 %      calculated only when T-test is specified.
 % The highest density interval (HDI) for the difference in log(meta-d'/d') 
-% between the groups will be calculated and recorded, as frequentist
-% statistics cannot be used here. A summary Figure for each of these
-% metrics will be created and saved in the filter_detection_task/
+% between the groups / sessions will be calculated and recorded, as 
+% frequentist statistics cannot be used here. A summary Figure for each of 
+% these metrics will be created and saved in the filter_detection_task/
 % analysis/ folder.
 
 
@@ -211,12 +217,13 @@ try
         analysis.PPIDs = input('PPID = ', 's'); % Ask for PPID
         try
             analysis.data = load(fullfile('results', ['filter_task_results_', analysis.PPIDs, '.mat'])); % Load data
+            analysis.ratings = analysis.data.results.setup.confidenceUpper - analysis.data.results.setup.confidenceLower + 1; % Calculate number of confidence rating bins
         catch
             fprintf('\nInvalid PPID.\n');
             return
         end
     elseif strcmp(analysis.type,'group') == 1 % If group analysis specified
-        analysis.type = input('Type of analysis (mean, diff or regress) = ', 's'); % Ask for type of group analysis to be run
+        analysis.type = input('Type of analysis (mean, diff, paired or regress) = ', 's'); % Ask for type of group analysis to be run
         if strcmp(analysis.type,'mean') == 1 % If group mean analysis specified
             analysis.PPIDs = input('Input group PPIDs (e.g. {''001'', ''002'', ''003'',...}) = '); % Ask for PPIDs
             analysis.groupsize(1) = length(analysis.PPIDs);
@@ -229,10 +236,11 @@ try
                     return
                 end
             end
+            analysis.ratings = analysis.data(1).results.setup.confidenceUpper - analysis.data(1).results.setup.confidenceLower + 1; % Calculate number of confidence rating bins
         elseif strcmp(analysis.type,'diff') == 1 % If two group difference analysis specified
             analysis.PPIDs.group1 = input('Input group 1 PPIDs (e.g. {''001'', ''002'', ''003'',...}) = '); % Ask for PPIDs
             analysis.PPIDs.group2 = input('Input group 2 PPIDs (e.g. {''004'', ''005'', ''006'',...}) = '); % Ask for PPIDs
-            analysis.groupDiff.test = input('Type 1 variable tests (ttest or wilcoxen) = ', 's'); % Ask for parametric or non-parmetric test options for type 1 variables (d', c etc.)
+            analysis.groupDiff.test = input('Type 1 variable tests (ttest or wilcoxon) = ', 's'); % Ask for parametric or non-parmetric test options for type 1 variables (d', c etc.)
             analysis.groupsize(1) = length(analysis.PPIDs.group1);
             analysis.groupsize(2) = length(analysis.PPIDs.group2);
             for n = 1:analysis.groupsize(1)
@@ -253,6 +261,36 @@ try
                     return
                 end
             end
+            analysis.ratings = analysis.group1.data(1).results.setup.confidenceUpper - analysis.group1.data(1).results.setup.confidenceLower + 1; % Calculate number of confidence rating bins
+        elseif strcmp(analysis.type,'paired') == 1 % If paired difference analysis specified
+            fprintf('\nNOTE: PPIDs from each session need to be paired and in the same order\n');
+            analysis.PPIDs.session1 = input('Input session 1 PPIDs (e.g. {''001a'', ''002a'', ''003a'',...}) = '); % Ask for PPIDs
+            analysis.PPIDs.session2 = input('Input session 2 PPIDs (e.g. {''001b'', ''002b'', ''003b'',...}) = '); % Ask for PPIDs
+            analysis.sessionDiff.test = input('Type 1 variable tests (ttest or wilcoxon) = ', 's'); % Ask for parametric or non-parmetric test options for type 1 variables (d', c etc.)
+            analysis.sessionSize(1) = length(analysis.PPIDs.session1);
+            analysis.sessionSize(2) = length(analysis.PPIDs.session2);
+            if analysis.sessionSize(1) ~= analysis.sessionSize(2)
+                error('Number of PPIDs in each session does not match!');
+            end
+            for n = 1:analysis.sessionSize(1)
+                PPID = char(analysis.PPIDs.session1(n));
+                try
+                    analysis.session1.data(n) = load(fullfile('results', ['filter_task_results_', PPID, '.mat'])); % Load data
+                catch
+                    fprintf('\nInvalid PPIDs for session 1.\n');
+                    return
+                end
+            end
+            for n = 1:analysis.sessionSize(2)
+                PPID = char(analysis.PPIDs.session2(n));
+                try
+                    analysis.session2.data(n) = load(fullfile('results', ['filter_task_results_', PPID, '.mat'])); % Load data
+                catch
+                    fprintf('\nInvalid PPIDs for session 2.\n');
+                    return
+                end
+            end
+            analysis.ratings = analysis.session1.data(1).results.setup.confidenceUpper - analysis.session1.data(1).results.setup.confidenceLower + 1; % Calculate number of confidence rating bins
         elseif strcmp(analysis.type,'regress') == 1 % If regression analysis specified
             analysis.PPIDs = input('Input group PPIDs (e.g. {''001'', ''002'', ''003'',...}) = '); % Ask for PPIDs
             analysis.groupsize(1) = length(analysis.PPIDs);
@@ -265,8 +303,9 @@ try
                     return
                 end
             end
+            analysis.ratings = analysis.data(1).results.setup.confidenceUpper - analysis.data(1).results.setup.confidenceLower + 1; % Calculate number of confidence rating bins
             fprintf('\nNote: Covariate text file required to be placed in results folder\n--> Scores need to be in the SAME ORDER as PPID input order.\n');
-            analysis.covariate.fileName = input('Input covariate file name (e.g. covariate.txt) = ', 's'); % Ask for covariate file name
+            analysis.covariate.fileName = input('Input covariate file name (e.g. covariate_example.txt) = ', 's'); % Ask for covariate file name
             try
                 analysis.covariate.data = load(fullfile('results', analysis.covariate.fileName)); % Load data
             catch
@@ -304,7 +343,7 @@ if strcmp(analysis.type,'single') == 1 || strcmp(analysis.type,'mean') == 1 || s
         stimID = analysis.data(n).results.thresholdTrials.filters;
         response = analysis.data(n).results.thresholdTrials.response;
         rating = analysis.data(n).results.thresholdTrials.confidence;
-        [analysis.trials2counts.nR_S1{n}, analysis.trials2counts.nR_S2{n}] = trials2counts(stimID,response,rating,10,0); % Run for 10 ratings and 0 cell padding
+        [analysis.trials2counts.nR_S1{n}, analysis.trials2counts.nR_S2{n}] = trials2counts(stimID,response,rating,analysis.ratings,0); % Run for number of ratings and no cell padding
     end
     
 elseif strcmp(analysis.type,'diff') == 1
@@ -314,14 +353,31 @@ elseif strcmp(analysis.type,'diff') == 1
         stimID = analysis.group1.data(n).results.thresholdTrials.filters;
         response = analysis.group1.data(n).results.thresholdTrials.response;
         rating = analysis.group1.data(n).results.thresholdTrials.confidence;
-        [analysis.group1.trials2counts.nR_S1{n}, analysis.group1.trials2counts.nR_S2{n}] = trials2counts(stimID,response,rating,10,0); % Run for 10 ratings and 0 cell padding
+        [analysis.group1.trials2counts.nR_S1{n}, analysis.group1.trials2counts.nR_S2{n}] = trials2counts(stimID,response,rating,analysis.ratings,0); % Run for number of ratings and no cell padding
     end
     % Run trials2counts script for group 2
     for n = 1:length(analysis.group2.data)
         stimID = analysis.group2.data(n).results.thresholdTrials.filters;
         response = analysis.group2.data(n).results.thresholdTrials.response;
         rating = analysis.group2.data(n).results.thresholdTrials.confidence;
-        [analysis.group2.trials2counts.nR_S1{n}, analysis.group2.trials2counts.nR_S2{n}] = trials2counts(stimID,response,rating,10,0);
+        [analysis.group2.trials2counts.nR_S1{n}, analysis.group2.trials2counts.nR_S2{n}] = trials2counts(stimID,response,rating,analysis.ratings,0); % Run for number of ratings and no cell padding
+    end
+    
+elseif strcmp(analysis.type,'paired') == 1
+    
+    % Run trials2counts script for session 1
+    for n = 1:length(analysis.session1.data)
+        stimID = analysis.session1.data(n).results.thresholdTrials.filters;
+        response = analysis.session1.data(n).results.thresholdTrials.response;
+        rating = analysis.session1.data(n).results.thresholdTrials.confidence;
+        [analysis.trials2counts.nR_S1(1).counts{n}, analysis.trials2counts.nR_S2(1).counts{n}] = trials2counts(stimID,response,rating,analysis.ratings,0); % Run for number of ratings and no cell padding
+    end
+    % Run trials2counts script for session 2
+    for n = 1:length(analysis.session2.data)
+        stimID = analysis.session2.data(n).results.thresholdTrials.filters;
+        response = analysis.session2.data(n).results.thresholdTrials.response;
+        rating = analysis.session2.data(n).results.thresholdTrials.confidence;
+        [analysis.trials2counts.nR_S1(2).counts{n}, analysis.trials2counts.nR_S2(2).counts{n}] = trials2counts(stimID,response,rating,analysis.ratings,0); % Run for number of ratings and no cell padding
     end
     
 end
@@ -421,15 +477,13 @@ end
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% RUN GROUP DIFFERENCE ANALYSIS IF SPECIFIED
+% RUN GROUP DIFFERENCE ANALYSIS (UNPAIRED) IF SPECIFIED
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 if strcmp(analysis.type,'diff') == 1 % If group difference analysis specified
     
-    % For two-group difference analysis: Print message about groups being fit separately, no t-tests possible on meta-d' metrics
-    if strcmp(analysis.type,'diff') == 1
-        fprintf('\nNOTE: Groups are fit using separate hierarchical models.\nFrequentist statistics (such as t-tests) are not possible on any metrics involving meta-d''.\nFrequentist statistics will still be applied to all type 1 metrics and average confidence values.\n');
-    end
+    % For two-group difference analysis: Print message about groups being fit separately --> no t-tests possible on meta-d' metrics
+    fprintf('\nNOTE: Groups are fit using separate hierarchical models.\nFrequentist statistics (such as t-tests) are not possible on any metrics involving meta-d''.\nFrequentist statistics will still be applied to all type 1 metrics and average confidence values.\n');
     
     % Specify parameters
     analysis.groupDiff.mcmc_params = fit_meta_d_params;
@@ -491,7 +545,7 @@ if strcmp(analysis.type,'diff') == 1 % If group difference analysis specified
     analysis.groupDiff.avgConfidence.meanDiff = analysis.group1.avgConfidence.groupMean - analysis.group2.avgConfidence.groupMean;
 
     % Run specified statistical test on all non-hierarchical metrics
-    if strcmp(analysis.groupDiff.test,'wilcoxen') == 1
+    if strcmp(analysis.groupDiff.test,'wilcoxon') == 1
         analysis.groupDiff.testType = 'Wilcoxon rank sum test';
         [analysis.groupDiff.filterNum.p,analysis.groupDiff.filterNum.h,analysis.groupDiff.filterNum.stats] = ranksum(analysis.group1.filterNum.singleSubject,analysis.group2.filterNum.singleSubject);
         [analysis.groupDiff.accuracy.p,analysis.groupDiff.accuracy.h,analysis.groupDiff.accuracy.stats] = ranksum(analysis.group1.accuracy.singleSubject,analysis.group2.accuracy.singleSubject);
@@ -633,6 +687,225 @@ if strcmp(analysis.type,'diff') == 1 % If group difference analysis specified
     fprintf('\n________________________________________\n\n  COMPLETED GROUP DIFFERENCE ANALYSIS\n _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\n');
     fprintf('\n DIFF MRATIO = %.2f (HDI: %.2f to %.2f)\n', analysis.groupDiff.Mratio.mean, analysis.groupDiff.Mratio.hdi(1), analysis.groupDiff.Mratio.hdi(2));
     if (analysis.groupDiff.Mratio.hdi(1) > 0 && analysis.groupDiff.Mratio.hdi(2) > 0) || (analysis.groupDiff.Mratio.hdi(1) < 0 && analysis.groupDiff.Mratio.hdi(2) < 0)
+        fprintf('HDI DOES NOT SPAN ZERO: MRATIO DIFF SIG.\n _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\n');
+    else
+        fprintf('  HDI SPANS ZERO: MRATIO DIFF NOT SIG.\n _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\n');
+    end
+    fprintf('\n        RESULTS CAN BE FOUND IN: \n    filter_detection_task/analysis/\n________________________________________\n');
+    
+end
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% RUN SESSION DIFFERENCE ANALYSIS (PAIRED) IF SPECIFIED
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+if strcmp(analysis.type,'paired') == 1 % If session difference analysis specified
+    
+    % For two-session difference analysis: Print message about groups being fit together --> t-tests possible on meta-d' metrics
+    fprintf('\nNOTE: Groups are fit using one hierarchical model.\nFrequentist statistics (such as t-tests) are possible on any metrics involving meta-d''.\nFrequentist statistics are applied to all type 1 metrics and average confidence values.\n');
+    
+    % Specify parameters
+    analysis.sessionDiff.mcmc_params = fit_meta_d_params;
+    
+    % Fit each group using a separate hierarchical Bayesian model
+    analysis.sessionDiff.fit = fit_meta_d_mcmc_groupCorr(analysis.trials2counts.nR_S1, analysis.trials2counts.nR_S2, analysis.sessionDiff.mcmc_params);
+    
+    % Compute HDI of difference for log(meta-d'/d')
+    analysis.session1.logMratio.sessionMean = analysis.sessionDiff.fit.mu_logMratio(1);
+    analysis.session1.logMratio.singleSubject = log(analysis.sessionDiff.fit.Mratio(:,1));
+    analysis.session1.Mratio.sessionMean = exp(analysis.sessionDiff.fit.mu_logMratio(1));
+    analysis.session1.Mratio.singleSubject = analysis.sessionDiff.fit.Mratio(:,1);
+    analysis.session2.logMratio.sessionMean = analysis.sessionDiff.fit.mu_logMratio(2);
+    analysis.session2.logMratio.singleSubject = log(analysis.sessionDiff.fit.Mratio(:,2));
+    analysis.session2.Mratio.sessionMean = exp(analysis.sessionDiff.fit.mu_logMratio(2));
+    analysis.session2.Mratio.singleSubject = analysis.sessionDiff.fit.Mratio(:,2);
+    analysis.sessionDiff.log_Mratio.sampleDiff = analysis.sessionDiff.fit.mcmc.samples.mu_logMratio(:,:,1) - analysis.sessionDiff.fit.mcmc.samples.mu_logMratio(:,:,2);
+    analysis.sessionDiff.log_Mratio.mean = analysis.session1.logMratio.sessionMean - analysis.session2.logMratio.sessionMean;
+    analysis.sessionDiff.log_Mratio.hdi = calc_HDI(analysis.sessionDiff.log_Mratio.sampleDiff(:));
+    analysis.sessionDiff.Mratio.mean = exp(analysis.session1.logMratio.sessionMean) - exp(analysis.session2.logMratio.sessionMean);
+    analysis.sessionDiff.Mratio.hdi = calc_HDI((exp(analysis.sessionDiff.fit.mcmc.samples.mu_logMratio(:,:,1)) - exp(analysis.sessionDiff.fit.mcmc.samples.mu_logMratio(:,:,2))));
+
+    % Pull out session mean values for all non-hierarchical metrics
+    analysis.session1.d1.sessionMean = mean(analysis.sessionDiff.fit.d1(:,1));
+    analysis.session1.d1.singleSubject = analysis.sessionDiff.fit.d1(:,1);
+    analysis.session1.c1.sessionMean = mean(analysis.sessionDiff.fit.c1(:,1));
+    analysis.session1.c1.singleSubject = analysis.sessionDiff.fit.c1(:,1);
+    analysis.session2.d1.sessionMean = mean(analysis.sessionDiff.fit.d1(:,2));
+    analysis.session2.d1.singleSubject = analysis.sessionDiff.fit.d1(:,2);
+    analysis.session2.c1.sessionMean = mean(analysis.sessionDiff.fit.c1(:,2));
+    analysis.session2.c1.singleSubject = analysis.sessionDiff.fit.c1(:,2);
+    
+    % Calculate average confidence, add filter number and accuracy to results for session 1
+    for n = 1:length(analysis.session1.data)
+        analysis.session1.avgConfidence.singleSubject(n) = mean(analysis.session1.data(n).results.thresholdTrials.confidence);
+        analysis.session1.filterNum.singleSubject(n) = mean(analysis.session1.data(n).results.thresholdTrials.filterNum);
+        analysis.session1.accuracy.singleSubject(n) = analysis.session1.data(n).results.thresholdTrials.accuracyTotal;
+    end
+    analysis.session1.avgConfidence.sessionMean = mean(analysis.session1.avgConfidence.singleSubject);
+    analysis.session1.filterNum.sessionMean = mean(analysis.session1.filterNum.singleSubject);
+    analysis.session1.accuracy.sessionMean = mean(analysis.session1.accuracy.singleSubject);
+    
+    % Calculate average confidence, add filter number and accuracy to results for session 2
+    for n = 1:length(analysis.session2.data)
+        analysis.session2.avgConfidence.singleSubject(n) = mean(analysis.session2.data(n).results.thresholdTrials.confidence);
+        analysis.session2.filterNum.singleSubject(n) = mean(analysis.session2.data(n).results.thresholdTrials.filterNum);
+        analysis.session2.accuracy.singleSubject(n) = analysis.session2.data(n).results.thresholdTrials.accuracyTotal;
+    end
+    analysis.session2.avgConfidence.sessionMean = mean(analysis.session2.avgConfidence.singleSubject);
+    analysis.session2.filterNum.sessionMean = mean(analysis.session2.filterNum.singleSubject);
+    analysis.session2.accuracy.sessionMean = mean(analysis.session2.accuracy.singleSubject);
+    
+    % Calculate session difference values for all non-hierarchical metrics
+    analysis.sessionDiff.filterNum.meanDiff = analysis.session1.filterNum.sessionMean - analysis.session2.filterNum.sessionMean;
+    analysis.sessionDiff.accuracy.meanDiff = analysis.session1.accuracy.sessionMean - analysis.session2.accuracy.sessionMean;
+    analysis.sessionDiff.d1.meanDiff = analysis.session1.d1.sessionMean - analysis.session2.d1.sessionMean;
+    analysis.sessionDiff.c1.meanDiff = analysis.session1.c1.sessionMean - analysis.session2.c1.sessionMean;
+    analysis.sessionDiff.avgConfidence.meanDiff = analysis.session1.avgConfidence.sessionMean - analysis.session2.avgConfidence.sessionMean;
+
+    % Run specified statistical test on all non-hierarchical metrics
+    if strcmp(analysis.sessionDiff.test,'wilcoxon') == 1
+        analysis.sessionDiff.testType = 'Wilcoxon signed rank test';
+        [analysis.sessionDiff.filterNum.p,analysis.sessionDiff.filterNum.h,analysis.sessionDiff.filterNum.stats] = signrank(analysis.session1.filterNum.singleSubject,analysis.session2.filterNum.singleSubject);
+        [analysis.sessionDiff.accuracy.p,analysis.sessionDiff.accuracy.h,analysis.sessionDiff.accuracy.stats] = signrank(analysis.session1.accuracy.singleSubject,analysis.session2.accuracy.singleSubject);
+        [analysis.sessionDiff.d1.p,analysis.sessionDiff.d1.h,analysis.sessionDiff.d1.stats] = signrank(analysis.session1.d1.singleSubject,analysis.session2.d1.singleSubject);
+        [analysis.sessionDiff.c1.p,analysis.sessionDiff.c1.h,analysis.sessionDiff.c1.stats] = signrank(analysis.session1.c1.singleSubject,analysis.session2.c1.singleSubject);
+        [analysis.sessionDiff.avgConfidence.p,analysis.sessionDiff.avgConfidence.h,analysis.sessionDiff.avgConfidence.stats] = signrank(analysis.session1.avgConfidence.singleSubject,analysis.session2.avgConfidence.singleSubject);
+    elseif strcmp(analysis.sessionDiff.test,'ttest') == 1
+        analysis.sessionDiff.testType = 'Paired T-test';
+        [analysis.sessionDiff.filterNum.h,analysis.sessionDiff.filterNum.p,analysis.sessionDiff.filterNum.ci,analysis.sessionDiff.filterNum.stats] = ttest(analysis.session1.filterNum.singleSubject,analysis.session2.filterNum.singleSubject);
+        [analysis.sessionDiff.accuracy.h,analysis.sessionDiff.accuracy.p,analysis.sessionDiff.accuracy.ci,analysis.sessionDiff.accuracy.stats] = ttest(analysis.session1.accuracy.singleSubject,analysis.session2.accuracy.singleSubject);
+        [analysis.sessionDiff.d1.h,analysis.sessionDiff.d1.p,analysis.sessionDiff.d1.ci,analysis.sessionDiff.d1.stats] = ttest(analysis.session1.d1.singleSubject,analysis.session2.d1.singleSubject);
+        [analysis.sessionDiff.c1.h,analysis.sessionDiff.c1.p,analysis.sessionDiff.c1.ci,analysis.sessionDiff.c1.stats] = ttest(analysis.session1.c1.singleSubject,analysis.session2.c1.singleSubject);
+        [analysis.sessionDiff.avgConfidence.h,analysis.sessionDiff.avgConfidence.p,analysis.sessionDiff.avgConfidence.ci,analysis.sessionDiff.avgConfidence.stats] = ttest(analysis.session1.avgConfidence.singleSubject,analysis.session2.avgConfidence.singleSubject);
+    end
+    
+    % Save results
+    save(resultsFile, 'analysis'); % Save results
+
+    % Create Figure to display results
+    figure
+    set(gcf, 'Units', 'Normalized', 'OuterPosition', [0 0 0.6 0.6]);
+    labels = ['Session 1'; 'Session 2'];
+    % Plot Type 1 metrics on top line
+    ax1 = subplot(2,4,1);
+    bar(ax1, [analysis.session1.filterNum.sessionMean; analysis.session2.filterNum.sessionMean]);
+    hold on
+    errorbar(ax1, [analysis.session1.filterNum.sessionMean; analysis.session2.filterNum.sessionMean], [std(analysis.session1.filterNum.singleSubject), std(analysis.session2.filterNum.singleSubject)], 'o', 'marker', 'none', 'linewidth', 1, 'Color','k');
+    set(gca,'XTickLabel',labels);
+    set(gca,'XTickLabelRotation',90)
+    if analysis.sessionDiff.filterNum.h == 0
+        title('FILTER NUMBER: NON-SIG DIFF')
+    elseif analysis.sessionDiff.filterNum.h > 0
+        title('FILTER NUMBER: SIG DIFF')
+    end
+    hold off
+    ax2 = subplot(2,4,2);
+    bar(ax2, [analysis.session1.accuracy.sessionMean; analysis.session2.accuracy.sessionMean]);
+    hold on
+    errorbar(ax2, [analysis.session1.accuracy.sessionMean; analysis.session2.accuracy.sessionMean], [std(analysis.session1.accuracy.singleSubject), std(analysis.session2.accuracy.singleSubject)], 'o', 'marker', 'none', 'linewidth', 1, 'Color','k');
+    set(gca,'XTickLabel',labels);
+    set(gca,'XTickLabelRotation',90)
+    if analysis.sessionDiff.accuracy.h == 0
+        title('ACCURACY: NON-SIG DIFF')
+    elseif analysis.sessionDiff.accuracy.h > 0
+        title('ACCURACY: SIG DIFF')
+    end
+    ax3 = subplot(2,4,3);
+    bar(ax3, [analysis.session1.d1.sessionMean; analysis.session2.d1.sessionMean]);
+    hold on
+    errorbar(ax3, [analysis.session1.d1.sessionMean; analysis.session2.d1.sessionMean], [std(analysis.session1.d1.singleSubject), std(analysis.session2.d1.singleSubject)], 'o', 'marker', 'none', 'linewidth', 1, 'Color','k');
+    set(gca,'XTickLabel',labels);
+    set(gca,'XTickLabelRotation',90)
+    if analysis.sessionDiff.d1.h == 0
+        title('d'': NON-SIG DIFF')
+    elseif analysis.sessionDiff.d1.h > 0
+        title('d'': SIG DIFF')
+    end
+    hold off
+    ax4 = subplot(2,4,4);
+    bar(ax4, [analysis.session1.c1.sessionMean; analysis.session2.c1.sessionMean]);
+    hold on
+    errorbar(ax4, [analysis.session1.c1.sessionMean; analysis.session2.c1.sessionMean], [std(analysis.session1.c1.singleSubject), std(analysis.session2.c1.singleSubject)], 'o', 'marker', 'none', 'linewidth', 1, 'Color','k');
+    set(gca,'XTickLabel',labels);
+    set(gca,'XTickLabelRotation',90)
+    if analysis.sessionDiff.c1.h == 0
+        title('CRITERION: NON-SIG DIFF')
+    elseif analysis.sessionDiff.c1.h > 0
+        title('CRITERION: SIG DIFF')
+    end
+    hold off
+    % Plot session Mratio and the difference
+    ax5 = subplot(2,4,5);
+    histogram(ax5, exp(analysis.sessionDiff.fit.mcmc.samples.mu_logMratio(:,:,1)))
+    xlim([0 2])
+    xlabel('MRatio');
+    ylabel('Sample count');
+    hold on
+    histogram(ax5, exp(analysis.sessionDiff.fit.mcmc.samples.mu_logMratio(:,:,2)))
+    hold off
+    lgd = legend('Session 1', 'Session 2', 'Location', 'northeast');
+    lgd.FontSize = 10;
+    if (analysis.sessionDiff.Mratio.hdi(1) > 0 && analysis.sessionDiff.Mratio.hdi(2) > 0) || (analysis.sessionDiff.Mratio.hdi(1) < 0 && analysis.sessionDiff.Mratio.hdi(2) < 0)
+        title('MRATIO: SIG DIFF')
+    else
+        title('MRATIO: NON-SIG DIFF')
+    end
+    ax6 = subplot(2,4,6);
+    histogram(ax6, analysis.sessionDiff.fit.mcmc.samples.mu_logMratio(:,:,1))
+    xlabel('log(MRatio)');
+    ylabel('Sample count');
+    hold on
+    histogram(ax6, analysis.sessionDiff.fit.mcmc.samples.mu_logMratio(:,:,2))
+    hold off
+    lgd = legend('Session 1', 'Session 2', 'Location', 'northwest');
+    lgd.FontSize = 10;
+    if (analysis.sessionDiff.log_Mratio.hdi(1) > 0 && analysis.sessionDiff.log_Mratio.hdi(2) > 0) || (analysis.sessionDiff.log_Mratio.hdi(1) < 0 && analysis.sessionDiff.log_Mratio.hdi(2) < 0)
+        title('LOG(MRATIO): SIG DIFF')
+    else
+        title('LOG(MRATIO): NON-SIG DIFF')
+    end
+    ax7 = subplot(2,4,7);
+    histogram(ax7, analysis.sessionDiff.log_Mratio.sampleDiff)
+    xlabel('log(MRatio)');
+    ylabel('Sample count');
+    if (analysis.sessionDiff.log_Mratio.hdi(1) > 0 && analysis.sessionDiff.log_Mratio.hdi(2) > 0) || (analysis.sessionDiff.log_Mratio.hdi(1) < 0 && analysis.sessionDiff.log_Mratio.hdi(2) < 0)
+        title('LOG(MRATIO) DIFF: SIG DIFF')
+    else
+        title('LOG(MRATIO) DIFF: NON-SIG DIFF')
+    end
+    hold on
+    ln2 = line([analysis.sessionDiff.log_Mratio.hdi(1) analysis.sessionDiff.log_Mratio.hdi(1)], [0 1800]);
+    ln2.Color = 'r';
+    ln2.LineWidth = 1.5;
+    ln2.LineStyle = '--';
+    ln2 = line([analysis.sessionDiff.log_Mratio.hdi(2) analysis.sessionDiff.log_Mratio.hdi(2)], [0 1800]);
+    ln2.Color = 'r';
+    ln2.LineWidth = 1.5;
+    ln2.LineStyle = '--';
+    hold off
+    % Plot average confidence
+    ax8 = subplot(2,4,8);
+    bar(ax8, [analysis.session1.avgConfidence.sessionMean; analysis.session2.avgConfidence.sessionMean]);
+    hold on
+    errorbar(ax8, [analysis.session1.avgConfidence.sessionMean; analysis.session2.avgConfidence.sessionMean], [std(analysis.session1.avgConfidence.singleSubject), std(analysis.session2.avgConfidence.singleSubject)], 'o', 'marker', 'none', 'linewidth', 1, 'Color','k');
+    set(gca,'XTickLabel',labels);
+    set(gca,'XTickLabelRotation',90)
+    if analysis.sessionDiff.avgConfidence.h == 0
+        title('CONFIDENCE: NON-SIG DIFF')
+    elseif analysis.sessionDiff.avgConfidence.h > 0
+        title('CONFIDENCE: SIG DIFF')
+    end
+    hold off
+
+    % Print figure
+    figureFile = fullfile('analysis', ['filter_task_analysis_', analysis.type]); % Create figure file name
+    print(figureFile, '-dtiff');
+
+    % Display completion message on screen
+    fprintf('\n________________________________________\n\n  COMPLETED SESSION DIFFERENCE ANALYSIS\n _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\n');
+    fprintf('\n DIFF MRATIO = %.2f (HDI: %.2f to %.2f)\n', analysis.sessionDiff.Mratio.mean, analysis.sessionDiff.Mratio.hdi(1), analysis.sessionDiff.Mratio.hdi(2));
+    if (analysis.sessionDiff.Mratio.hdi(1) > 0 && analysis.sessionDiff.Mratio.hdi(2) > 0) || (analysis.sessionDiff.Mratio.hdi(1) < 0 && analysis.sessionDiff.Mratio.hdi(2) < 0)
         fprintf('HDI DOES NOT SPAN ZERO: MRATIO DIFF SIG.\n _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\n');
     else
         fprintf('  HDI SPANS ZERO: MRATIO DIFF NOT SIG.\n _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _\n');

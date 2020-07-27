@@ -3,7 +3,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % -------------------------------------------------------------------------
-% Author: Olivia Faull
+% Author: Olivia Harrison
 % Created: 14/08/2018
 %
 % This software is free software: you can redistribute it and/or modify it 

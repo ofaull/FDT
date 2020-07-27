@@ -5,7 +5,7 @@
 % Author: Brian Maniscalco
 % Contact: brian@psych.columbia.edu
 
-% 10.08.2018: OKF added calculation for type 1 c to the results
+% 10.08.2018: OKH added calculation for type 1 c to the results
 
 % NOTE FROM WEBPAGE:
 % If you use this analysis file, please reference the Consciousness &
