@@ -1,7 +1,7 @@
 # FILTER DETECTION TASK
 
 
-VERSION: 0.2.1
+VERSION: 0.2.2
 
 Author: Olivia Harrison
 
