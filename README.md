@@ -13,6 +13,10 @@ See the GNU General Public License for more details: <http://www.gnu.org/license
 
 -----
 
+Updated to 0.2.2: 27/07/2020
+
+- Paired session difference analysis option added to the toolbox
+
 Updated to 0.2.1: 22/06/2020
 
 - Added error to avoid over-writing files with the same PPID specified
