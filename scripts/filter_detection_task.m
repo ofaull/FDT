@@ -74,7 +74,7 @@
 function filter_detection_task()
 
 % Specify the task type: 1 = Yes/No task, 2 = 2IFC task
-results.setup.taskType = 1; % Change this to change the task type
+results.setup.taskType = 2; % Change this to change the task type
 if results.setup.taskType == 1
     results.setup.taskDescription = 'YesNo';
 elseif results.setup.taskType == 2
@@ -84,7 +84,7 @@ end
 % Specify the type of staircase:
 % 1 = Fixed staircase, where threshold trials remain at one filter level
 % 2 = Roving staircase, where threshold trials can cross filter levels
-results.setup.staircaseType = 1; % Change this to change the staircase type
+results.setup.staircaseType = 2; % Change this to change the staircase type
 if results.setup.staircaseType == 1
     results.setup.staircaseDescription = 'Constant';
 elseif results.setup.staircaseType == 2
@@ -344,21 +344,21 @@ if calibration == 1
             else
                 fprintf('_______________________________________\n\n   ADD ONE FILTER (NOW = %d FILTERS)\n', currentIntensityNum);
             end
-        elseif (results.setup.taskType == 1 && results.calibration.response(n-1) == 0 && results.calibration.response(n) == 1) || (results.setup.taskType == 2 && results.calibration.score(n-1) == 0 && results.calibration.score(n) == 1) % When they first report feeling the resistance, add a filter and check for yes again
+        elseif (results.setup.taskType == 1 && results.calibration.response(n-1) == 0 && results.calibration.response(n) == 1) || (results.setup.taskType == 2 && n == 1 && results.calibration.score(n) == 1) || (results.setup.taskType == 2 && n >= 2 && results.calibration.score(n-1) == 0 && results.calibration.score(n) == 1) % When they first report feeling the resistance, add a filter and check for yes again
             currentIntensityNum = currentIntensityNum+1; % Add a filter
             if currentIntensityNum == 1
                 fprintf('_______________________________________\n\n   ADD ONE FILTER (NOW = %d FILTER)\n', currentIntensityNum);
             else
                 fprintf('_______________________________________\n\n   ADD ONE FILTER (NOW = %d FILTERS)\n', currentIntensityNum);
             end
-        elseif (results.setup.taskType == 1 && (results.calibration.response(n) + results.calibration.response(n-1)) == 2 && results.calibration.response(n-2) == 0) || (results.setup.taskType == 2 && (results.calibration.score(n) + results.calibration.score(n-1)) == 2 && results.calibration.score(n-2) == 0) % If two trials at ascending filters have 'yes' response
+        elseif (results.setup.taskType == 1 && (results.calibration.response(n) + results.calibration.response(n-1)) == 2 && results.calibration.response(n-2) == 0) || (results.setup.taskType == 2 && n == 2 && (results.calibration.score(n) + results.calibration.score(n-1)) == 2) || (results.setup.taskType == 2 && n >= 3 && (results.calibration.score(n) + results.calibration.score(n-1)) == 2 && results.calibration.score(n-2) == 0) % If two trials at ascending filters have 'yes' response
             currentIntensityNum = currentIntensityNum-1; % Remove a filter for a confirmation trial
             if currentIntensityNum == 1
                 fprintf('_______________________________________\n\n  REMOVE ONE FILTER (NOW = %d FILTER)\n', currentIntensityNum);
             else
                 fprintf('_______________________________________\n\n  REMOVE ONE FILTER (NOW = %d FILTERS)\n', currentIntensityNum);
             end
-        elseif (results.setup.taskType == 1 && (results.calibration.response(n-1) + results.calibration.response(n-2)) == 2) || (results.setup.taskType == 2 && (results.calibration.score(n-1) + results.calibration.score(n-2)) == 2) % Once two trials at ascending filters have a 'yes' response and confirmation trial conducted
+        elseif (results.setup.taskType == 1 && (results.calibration.response(n-1) + results.calibration.response(n-2)) == 2) || (results.setup.taskType == 2 && n >= 3 && (results.calibration.score(n-1) + results.calibration.score(n-2)) == 2) % Once two trials at ascending filters have a 'yes' response and confirmation trial conducted
             if (results.setup.taskType == 1 && results.calibration.response(n) == 1) || (results.setup.taskType == 2 && results.calibration.score(n) == 1) % If confirmation trial at lower filter is 'yes' / correct
                 break; % Filter number stays at lower intensity, calibration complete
             elseif (results.setup.taskType == 1 && results.calibration.response(n) == 0) || (results.setup.taskType == 2 && results.calibration.score(n) == 0) % If confirmation trial at lower filter is 'no' / incorrect
