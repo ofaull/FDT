@@ -1,7 +1,7 @@
 # FILTER DETECTION TASK
 
 
-VERSION: 0.2.2
+VERSION: 0.2.3
 
 Author: Olivia Harrison
 
@@ -12,6 +12,10 @@ This software is free software: you can redistribute it and/or modify it under t
 See the GNU General Public License for more details: <http://www.gnu.org/licenses/>
 
 -----
+
+Updated to 0.2.3: 16/03/2021
+
+- Bug fix for using the calibration staircase with the 2IFC task configuration
 
 Updated to 0.2.2: 27/07/2020
 
