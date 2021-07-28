@@ -129,7 +129,7 @@ fprintf('\n_______________________________________\n\n          SET UP FILTER TA
 
 % Prompt for PPID
 results.PPID = input('PPID: ','s'); % Get subject ID
-resultsFile = fullfile('results', ['filter_task_results_', results.PPID]); % Create results file name
+resultsFile = fullfile('results', ['sub-', results.PPID, '_task-FDT_beh-', datestr(now, 'yyyy_mm_dd_HHMMSS')]); % Create results file name
 % Check if PPID file already exists
 if isfile([resultsFile, '.mat']) == 1
     error('PPID file already exists. Please choose a different PPID');
